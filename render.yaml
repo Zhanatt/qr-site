@@ -1,0 +1,6 @@
+services:
+  - type: web
+    name: qr-site
+    runtime: static
+    buildCommand: ""
+    staticPublishPath: .
