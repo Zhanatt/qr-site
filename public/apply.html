@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#1e3c72" />
+  <title>Подать заявку — MATKASYM</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="wrap">
+    <a href="index.html" class="back-link">← Назад</a>
+
+    <!-- Форма -->
+    <div id="formView">
+      <h1>Новая заявка</h1>
+      <p class="sub">Выберите тип и заполните данные товара.</p>
+
+      <div class="card">
+        <div id="errBox" class="msg err hidden"></div>
+
+        <!-- Тип продукта -->
+        <div class="type-switch">
+          <div class="type-opt selected" data-type="test">
+            <span class="icon">🧪</span>
+            <span class="label">Тестовый продукт</span>
+          </div>
+          <div class="type-opt" data-type="real">
+            <span class="icon">✅</span>
+            <span class="label">Заказать настоящий</span>
+          </div>
+        </div>
+
+        <!-- Фото -->
+        <div class="field">
+          <label>Фото товара</label>
+          <label class="photo-box" id="photoBox">
+            <div id="photoPlaceholder">
+              <span class="icon">📷</span>
+              <div class="hint">Нажмите, чтобы добавить фото</div>
+            </div>
+            <img id="photoPreview" class="hidden" alt="" />
+            <input type="file" id="photoInput" accept="image/*" />
+          </label>
+        </div>
+
+        <!-- Название -->
+        <div class="field">
+          <label>Название товара *</label>
+          <input type="text" id="name" placeholder="Например: Стол письменный" />
+        </div>
+
+        <!-- Размеры и цвет -->
+        <div class="row2">
+          <div class="field">
+            <label>Размеры</label>
+            <input type="text" id="sizes" placeholder="120×60×75" />
+          </div>
+          <div class="field">
+            <label>Цвет</label>
+            <input type="text" id="color" placeholder="Белый" />
+          </div>
+        </div>
+
+        <!-- Доп. текст -->
+        <div class="field">
+          <label>Дополнительно</label>
+          <textarea id="note" placeholder="Комментарий, если нужно"></textarea>
+        </div>
+
+        <button class="btn big" id="submitBtn">Отправить заявку</button>
+      </div>
+    </div>
+
+    <!-- Успех -->
+    <div id="successView" class="hidden">
+      <div class="card success">
+        <div class="check">✓</div>
+        <h1>Заявка отправлена!</h1>
+        <p class="sub">Заказ передан в обработку.</p>
+        <button class="btn big" onclick="location.reload()">➕ Подать ещё одну</button>
+        <a href="index.html" class="btn ghost" style="margin-top:12px;">На главную</a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let selectedType = "test";
+    let photoData = null;
+
+    document.querySelectorAll(".type-opt").forEach((el) => {
+      el.addEventListener("click", () => {
+        document.querySelectorAll(".type-opt").forEach((o) => o.classList.remove("selected"));
+        el.classList.add("selected");
+        selectedType = el.dataset.type;
+      });
+    });
+
+    // Сжатие фото на телефоне перед отправкой
+    document.getElementById("photoInput").addEventListener("change", (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const img = new Image();
+        img.onload = () => {
+          const max = 1000;
+          let { width, height } = img;
+          if (width > height && width > max) { height = height * max / width; width = max; }
+          else if (height > max) { width = width * max / height; height = max; }
+          const canvas = document.createElement("canvas");
+          canvas.width = width; canvas.height = height;
+          canvas.getContext("2d").drawImage(img, 0, 0, width, height);
+          photoData = canvas.toDataURL("image/jpeg", 0.7);
+          const preview = document.getElementById("photoPreview");
+          preview.src = photoData;
+          preview.classList.remove("hidden");
+          document.getElementById("photoPlaceholder").classList.add("hidden");
+        };
+        img.src = ev.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+
+    function showErr(text) {
+      const box = document.getElementById("errBox");
+      box.textContent = text;
+      box.classList.remove("hidden");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    document.getElementById("submitBtn").addEventListener("click", async () => {
+      const name = document.getElementById("name").value.trim();
+      if (!name) return showErr("Укажите название товара");
+
+      const btn = document.getElementById("submitBtn");
+      btn.disabled = true;
+      btn.textContent = "Отправка...";
+
+      try {
+        const res = await fetch("/api/orders", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            type: selectedType,
+            name,
+            sizes: document.getElementById("sizes").value.trim(),
+            color: document.getElementById("color").value.trim(),
+            note: document.getElementById("note").value.trim(),
+            photo: photoData,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Ошибка");
+        document.getElementById("formView").classList.add("hidden");
+        document.getElementById("successView").classList.remove("hidden");
+        window.scrollTo({ top: 0 });
+      } catch (err) {
+        showErr(err.message || "Не удалось отправить. Попробуйте ещё раз.");
+        btn.disabled = false;
+        btn.textContent = "Отправить заявку";
+      }
+    });
+  </script>
+</body>
+</html>

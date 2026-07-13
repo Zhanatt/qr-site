@@ -1,6 +1,18 @@
+databases:
+  - name: zayavki-db
+    plan: free
+
 services:
   - type: web
     name: qr-site
-    runtime: static
-    buildCommand: ""
-    staticPublishPath: .
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: zayavki-db
+          property: connectionString
+      - key: JIPAR_PASSWORD
+        sync: false
